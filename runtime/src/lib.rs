@@ -46,6 +46,8 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use pallet_template;
 pub use pallet_kitties;
+pub use pallet_tightly_coupling;
+pub use pallet_loosely_coupling;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -59,6 +61,9 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 
 /// Balance of an account.
 pub type Balance = u128;
+
+/// Get now time.
+pub type Moment = u64;
 
 /// Index of a transaction in the chain.
 pub type Index = u32;
@@ -229,7 +234,7 @@ impl pallet_grandpa::Config for Runtime {
 
 impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
-	type Moment = u64;
+	type Moment = Moment;
 	type OnTimestampSet = Aura;
 	type MinimumPeriod = ConstU64<{ SLOT_DURATION / 2 }>;
 	type WeightInfo = ();
@@ -269,6 +274,17 @@ impl pallet_template::Config for Runtime {
 
 impl pallet_kitties::Config for Runtime {
 	type Event = Event;
+	type Currency = Balances;
+	type TimeProvider = Timestamp;
+}
+
+impl pallet_tightly_coupling::Config for Runtime{
+	type Event = Event;
+}
+
+impl pallet_loosely_coupling::Config for Runtime{
+	type Event = Event;
+	type Increase = TemplateModule;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -289,6 +305,8 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
 		Kitties: pallet_kitties,
+		TightlyCoupling: pallet_tightly_coupling,
+		LooselyCoupling: pallet_loosely_coupling,
 	}
 );
 

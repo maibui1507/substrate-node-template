@@ -20,18 +20,25 @@ use sp_std::vec::Vec;
 use scale_info::TypeInfo;
 pub type Id = u32;
 use sp_runtime::ArithmeticError;
+use frame_support::traits::Currency;
+use pallet_timestamp;
+use frame_support::traits::UnixTime;
+
+type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;  
+  
 
 #[frame_support::pallet]
 pub mod pallet {
-
 	pub use super::*;
+
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Kitty<T: Config> {
 		pub dna: Vec<u8>,
-		pub price: u64,
+		pub price: BalanceOf<T>,
 		pub gender: Gender,
 		pub owner: T::AccountId,
+		pub created_date: u64,
 	}
 	#[derive(Clone, Encode, Decode, PartialEq, Copy, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 	pub enum Gender {
@@ -44,7 +51,11 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type Currency: Currency<Self::AccountId>;
+		type TimeProvider: UnixTime;
 	}
+
+
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -86,7 +97,7 @@ pub mod pallet {
 		TransferToSelf,
 
 	}
-
+	
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
 	// These functions materialize as "extrinsics", which are often compared to transactions.
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
@@ -99,9 +110,15 @@ pub mod pallet {
 		pub fn create_kitty(origin: OriginFor<T>, dna: Vec<u8>) -> DispatchResult {
 			// Make sure the caller is from a signed origin
 			let owner = ensure_signed(origin)?;
+			log::info!("total_balance:{:?}", T::Currency::total_balance(&owner));
+			let created_date = T::TimeProvider::now();
 
-			let gender = Self::gen_gender(&dna)?;
-			let kitty = Kitty::<T> { dna: dna.clone(), price: 0, gender, owner: owner.clone() };
+			// Random value.
+			// let nonce = Self::get_and_increment_nonce();
+			// let (random_dna, _) = T::MyRandomness::random(&dna);
+
+			let gender = Self::gen_gender(dna.clone())?;
+			let kitty = Kitty::<T> { dna: dna.clone(), price: 0u32.into(), gender, owner: owner.clone(),created_date:created_date.clone().as_secs()};
 
 			// Check if the kitty does not already exist in our storage map
 			ensure!(!Kitties::<T>::contains_key(&kitty.dna), Error::<T>::DuplicateKitty);
@@ -122,6 +139,7 @@ pub mod pallet {
 
 			Ok(())
 		}
+
 		#[pallet::weight(0)]
 		pub fn transfer(
 			origin: OriginFor<T>,
@@ -133,7 +151,6 @@ pub mod pallet {
 			let mut kitty = Kitties::<T>::get(&dna).ok_or(Error::<T>::NoKitty)?;
 			ensure!(kitty.owner == from, Error::<T>::NotOwner);
 			ensure!(from != to, Error::<T>::TransferToSelf);
-
 			let mut from_owned = KittiesOwned::<T>::get(&from);
 
 			// Remove kitty from list of owned kitties.
@@ -156,18 +173,22 @@ pub mod pallet {
 
 			Ok(())
 		}
-
-
 	}
 }
 
 
 impl<T> Pallet<T> {
-	fn gen_gender(dna: &Vec<u8>) -> Result<Gender,Error<T>>{
+	fn gen_gender(dna: Vec<u8>) -> Result<Gender,Error<T>>{
 		let mut res = Gender::Female;
 		if dna.len() % 2 ==0 {
 			res = Gender::Male;
 		}
 		Ok(res)
 	}
+
+	// fn get_and_increment_nonce() -> Vec<u8> {
+	// 	let nonce = Nonce::<T>::get();
+	// 	Nonce::<T>::put(nonce.wrapping_add(1));
+	// 	nonce.encode()
+	// }
 }
