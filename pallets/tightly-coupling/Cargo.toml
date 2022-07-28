@@ -36,7 +36,7 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"frame-benchmarking/std",
-	"pallet-template/std",
+	"pallet-template/std",	
 ]
 
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]

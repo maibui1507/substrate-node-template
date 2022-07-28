@@ -275,7 +275,8 @@ impl pallet_template::Config for Runtime {
 impl pallet_kitties::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type TimeProvider = Timestamp;
+	type KittyTime = Timestamp;
+	type KittyRandom = RandomnessCollectiveFlip;
 }
 
 impl pallet_tightly_coupling::Config for Runtime{
